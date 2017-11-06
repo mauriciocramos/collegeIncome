@@ -173,7 +173,7 @@ college %>%
 
 As stated in the codebook, the rank is calculated from median earnings of full-time, year-round workers, understood as the rank is the response variable and its main predictor is the median.
 
-he following percents pairs are understood as complementary, i.e., each sum should result in 1 (100%):
+The following percents pairs are understood as complementary, i.e., each sum should result in 1 (100%):
 
     perc_men: % men with major (out of total)
     perc_women: % women with major (out of total)
@@ -187,7 +187,7 @@ he following percents pairs are understood as complementary, i.e., each sum shou
     perc_college_jobs: % with job requiring a college degree (out of employed)
     perc_non_college_jobs: % with job not requiring a college degree (out of employed)
 
-However, the following percents are understood as standalone:
+The following percents stand alone:
 
     perc_employed_fulltime_yearround: % employed at least 50 weeks and at least 35 hours (out of employed and full-time)
     perc_low_wage_jobs: % in low-wage service jobs (out of total)
@@ -228,6 +228,13 @@ ggplot(college, aes(x=rank, y=rank(median))) +
 
 The box plot shows the best ranked majors are from Engineering and the worst from Psychology & Social Work.
 
+The Interdisciplinary category has only one major, ranked bellow 100.  As we cannot estimate effects of a category with a single major, it will be removed.
+
+```{r}
+college <- college %>%
+    filter(category != "Int")
+```
+
 ```{r fig.height=3, fig.width=9}
 ggplot(college, aes(y=rank, x=category, fill=category)) +
     geom_boxplot(show.legend = FALSE)
@@ -238,7 +245,6 @@ The violin plot overlaid with a dot plot give a better view of the rank distribu
 * Engineering (Eng) ranks are more concentrated above 25, followed by Computers & Mathematics (C&M) more concentrated around 50..
 * Communications & Journalism (C&J) ranks are concentrated slightly above 100.
 * Categories "Art" and "Psychology & Social Work" have ranks more concentrated around 150.
-* The Interdisciplinary category has only one major, ranked bellow 100.
 * The other categories not mentioned above are more uniformly distributed but worth metion that the categories Business (Bsn) and Physical Sciences (PhS) have each one a major that is around the overall top ones.
 
 ```{r fig.height=3, fig.width=9}
@@ -269,7 +275,7 @@ ggplot(college, aes(x=median), size=1) +
 
 As stated in the codebook, the Rank is calculated from median earnings of full-time, year-round workers, therefore, the distribution of median income by category is an interesting exploration.
 
-There are very potential influence outliers that deservers investigation.
+There are potential influential points that deservers investigation.
 
 ```{r fig.height=4, fig.width=9}
 ggplot(college, aes(y=median, x=category, fill=category)) +
@@ -394,34 +400,34 @@ college %>%
 ## Regression inference
 
 ### The initial hypothesis model
-```{r comment=""}
-fit <- lm(rank ~ category, college)
-anova(fit)
-```
-
-### Removing intercept yields higher F-statistic 
-```{r comment=""}
-fit <- lm(rank ~ category - 1, college)
-anova(fit)
-```
-
-### Residual plot of the best model so far
-```{r fig.width=9, fig.height=10}
+```{r fig.height=7, fig.width=7, comment=""}
+fit1 <- lm(rank ~ category, college)
+summary(fit1)
 par(mfrow=c(3,2))
-plot(fit, which = 1:6, cex.id = 1, col="dark gray")
+plot(fit1, which = 1:6, cex.id = 1, col="dark gray")
 ```
 
-This colored point version of the Residuals versus Fit plot helps identify patterns in categories.
+### Adding other terms
+
+As stated in the codebook, the rank is calculated from median earnings of full-time, year-round workers, therefore, we can experiment other terms not related to them like gender effects and effects related to type of job (jobs requiring a college degree and jobs that are low-wage service positions).
+
+```{r fig.height=7, fig.width=7, comment=""}
+fit2 <- lm(rank ~ major_category + perc_women + perc_college_jobs +
+              perc_low_wage_jobs, college)
+summary(fit2)
+par(mfrow=c(3,2))
+plot(fit2, which = 1:6, cex.id = 1, col="dark gray")
+```
+
+### Model ANOVA
 
 ```{r}
-ggplot(college, mapping = aes(x=predict(fit), y=resid(fit), color=category)) +
-    geom_point() +
-    geom_smooth(aes(color=NULL), method="lm")
+anova(fit1, fit2)
 ```
 
 ### Influence measurements
 ```{r}
-measures <- influence.measures(fit)
+measures <- influence.measures(fit1)
 summary(measures)
 ```
 
@@ -433,49 +439,3 @@ college %>%
     filter(influential) %>% customtable()
 ```
 
-### Nested models
-
-```{r comment=""}
-fit1 <- lm(rank ~ 0 + category, college)
-fit2 <- lm(rank ~ 0 + category + I(college$perc_men > .5), college)
-fit3 <- lm(rank ~ 0 + category + I(college$perc_women > .5), college)
-fit4 <- lm(rank ~ 0 + category + I(perc_employed > .5), college)
-fit5 <- lm(rank ~ 0 + category + I(perc_unemployed > .5), college)
-fit6 <- lm(rank ~ 0 + category + I(perc_employed_fulltime > .5), college)
-fit7 <- lm(rank ~ 0 + category + I(perc_employed_parttime > .5), college)
-fit8 <- lm(rank ~ 0 + category + I(perc_employed_fulltime_yearround > .5), college)
-fit9 <- lm(rank ~ 0 + category + I(!perc_employed_fulltime_yearround > .5), college)
-fit10 <- lm(rank ~ 0 + category + I(perc_college_jobs > .5), college)
-fit11 <- lm(rank ~ 0 + category + I(perc_non_college_jobs > .5), college)
-fit12 <- lm(rank ~ 0 + category + I(perc_low_wage_jobs > .5), college)
-fit13 <- lm(rank ~ 0 + category + I(!perc_low_wage_jobs > .5), college)
-fit14 <- lm(rank ~ 0 + category * I(perc_non_college_jobs > .5), college)
-fit15 <- lm(rank ~ 0 + category : I(perc_non_college_jobs > .5), college)
-```
-
-From all these models, the first is the best.  The model 10 was the one with the least worst result.
-
-```{r}
-anova(fit1)
-anova(fit1, fit10)
-```
-
-## Appendix
-
-### All the nested models ANOVA results:
-```{r comment=""}
-anova(fit1, fit2)
-anova(fit1, fit3)
-anova(fit1, fit4)
-anova(fit1, fit5)
-anova(fit1, fit6)
-anova(fit1, fit7)
-anova(fit1, fit8)
-anova(fit1, fit9)
-anova(fit1, fit10) #least worst
-anova(fit1, fit11)
-anova(fit1, fit12)
-anova(fit1, fit13)
-anova(fit1, fit14)
-anova(fit1, fit15)
-```
