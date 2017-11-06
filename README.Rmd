@@ -425,17 +425,26 @@ plot(fit2, which = 1:6, cex.id = 1, col="dark gray")
 anova(fit1, fit2)
 ```
 
-### Influence measurements
+### Model 1 influence measurements and influential observations
 ```{r}
 measures <- influence.measures(fit1)
 summary(measures)
 ```
-
-### Influential observations
-```{r}
+```{r, comment=""}
 influential <- unname(apply(measures$is.inf, 1, any))
 college %>%
     select(category, major_code, major, total, sample_size, median, rank) %>%
     filter(influential) %>% customtable()
 ```
 
+### Model 2 influence measurements and influential observations
+```{r}
+measures <- influence.measures(fit2)
+summary(measures)
+```
+```{r, comment=""}
+influential <- unname(apply(measures$is.inf, 1, any))
+college %>%
+    select(category, major_code, major, total, sample_size, median, rank) %>%
+    filter(influential) %>% customtable()
+```

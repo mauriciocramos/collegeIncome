@@ -657,7 +657,7 @@ anova(fit1, fit2)
     ## 1    157 165569                           
     ## 2    154 160553  3    5015.8 1.6037 0.1908
 
-### Influence measurements
+### Model 1 influence measurements and influential observations
 
 ``` r
 measures <- influence.measures(fit1)
@@ -704,8 +704,6 @@ summary(measures)
     ## 127  0.00     0.68    0.71_*  0.03   0.08
     ## 168  0.00     0.66    0.69_*  0.03   0.07
 
-### Influential observations
-
 ``` r
 influential <- unname(apply(measures$is.inf, 1, any))
 college %>%
@@ -726,3 +724,59 @@ college %>%
 | C&J      |        1903| Mass Media                       |   52824|          590|   35000|   126|
 | Bsn      |        6211| Hospitality Management           |   43647|          546|   40000|   128|
 | B&LS     |        3609| Zoology                          |    8409|           47|   65000|   169|
+
+### Model 2 influence measurements and influential observations
+
+``` r
+measures <- influence.measures(fit2)
+summary(measures)
+```
+
+    ## Potentially influential observations of
+    ##   lm(formula = rank ~ major_category + perc_women + perc_college_jobs +      perc_low_wage_jobs, data = college) :
+    ## 
+    ##     dfb.1_ dfb.mj_A dfb.m&LS dfb.mj_B dfb.m_&J dfb.m_&M dfb.mjr_ctgryEd
+    ## 20  -0.23   0.05     0.05     0.06    -0.03     0.05     0.03          
+    ## 22  -0.28   0.51     0.59     0.57     0.45     0.54     0.61          
+    ## 27  -0.20   0.06     0.07     0.08    -0.03     0.07     0.03          
+    ## 33   0.09  -0.91    -0.01    -0.01    -0.02    -0.03     0.01          
+    ## 94   0.02   0.00     0.01     0.00    -0.17     0.00     0.00          
+    ## 97   0.00   0.00     0.00     0.00    -0.16     0.00     0.00          
+    ## 99   0.00   0.00     0.00     0.00    -0.09     0.00     0.00          
+    ## 125  0.02   0.01     0.01     0.01     0.45     0.01    -0.01          
+    ##     dfb.mjr_ctgryEn dfb.mj_H dfb.m&LA dfb.mA&CS dfb.m&PP dfb.m_PS dfb.m&SW
+    ## 20   0.04            0.04     0.05     0.00     -0.69     0.05     0.07   
+    ## 22   0.67            0.56     0.59     0.53      0.41     0.53     0.50   
+    ## 27   0.05            0.05     0.07    -0.91      0.10     0.05     0.09   
+    ## 33   0.00           -0.01    -0.03     0.00     -0.01     0.00    -0.04   
+    ## 94   0.00            0.00     0.01     0.00      0.00     0.00     0.01   
+    ## 97   0.00            0.00     0.00     0.00      0.00     0.00     0.00   
+    ## 99   0.00            0.00     0.00     0.00      0.00     0.00     0.00   
+    ## 125  0.00            0.00     0.02     0.01      0.01     0.00     0.02   
+    ##     dfb.m_SS dfb.prc_ dfb.pr__ dfb.p___ dffit   cov.r   cook.d hat  
+    ## 20   0.03    -0.13     0.32     0.32    -1.05_*  0.96    0.06   0.23
+    ## 22   0.55    -0.04    -0.26    -0.27    -0.87    0.65_*  0.04   0.12
+    ## 27   0.04    -0.22     0.37     0.24    -1.29_*  0.50_*  0.09   0.16
+    ## 33   0.02    -0.07    -0.19     0.07    -1.25_*  0.40_*  0.08   0.13
+    ## 94   0.00    -0.03     0.01    -0.03    -0.21    1.52_*  0.00   0.27
+    ## 97   0.00     0.00     0.02    -0.01    -0.20    1.49_*  0.00   0.26
+    ## 99   0.00     0.01     0.00     0.00    -0.11    1.50_*  0.00   0.25
+    ## 125  0.00    -0.05     0.06    -0.11     0.55    1.42_*  0.02   0.28
+
+``` r
+influential <- unname(apply(measures$is.inf, 1, any))
+college %>%
+    select(category, major_code, major, total, sample_size, median, rank) %>%
+    filter(influential) %>% customtable()
+```
+
+| category |  major code| major                            |   total|  sample size|  median|  rank|
+|:---------|-----------:|:---------------------------------|-------:|------------:|-------:|-----:|
+| L&PP     |        3201| Court Reporting                  |    1148|           14|   40000|    20|
+| A&NR     |        1104| Food Science                     |    4361|           36|   33000|    22|
+| IA&CS    |        5601| Construction Services            |   18498|          295|   30000|    27|
+| Art      |        6099| Miscellaneous Fine Arts          |    3340|           30|   60000|    33|
+| C&J      |        1901| Communications                   |  213996|         2394|   50000|    94|
+| C&J      |        1902| Journalism                       |   72619|          843|   50000|    97|
+| C&J      |        1904| Advertising And Public Relations |   53162|          681|   33000|    99|
+| C&J      |        1903| Mass Media                       |   52824|          590|   35000|   126|
