@@ -110,7 +110,6 @@ is.wrong <- function(x, min=0, max=1)
 
 Which columns have wrong values
 ```{r}
-# (wrongCols <- names(which(colSums(sapply(college[, grep("^perc_",names(college), value = TRUE)], is.wrong))>0)))
 columnScope <- grep("^perc_",names(college), value = TRUE)
 (wrongCols <- names(which(colSums(sapply(college[, columnScope], is.wrong))>0)))
 ```
@@ -283,7 +282,7 @@ In the second plot there is some violation in the normality assumption of the re
 
 **It's not a good model.**
 
-```{r fig.width=9, fig.height=10, comment=""}
+```{r fig.width=9, fig.height=10}
 par(mfrow=c(3,2))
 plot(fit1, which = 1:6, cex.id = 1, col="dark gray")
 ```
@@ -296,7 +295,7 @@ Influence measures explains how removing points impact a particular aspect of th
 
 #### Influence measures
 
-```{r, comment=""}
+```{r}
 inf.measures <- influence.measures(fit1)
 summary(inf.measures)
 ```
@@ -313,7 +312,7 @@ college %>%
 
 According to the model p-value, it's an even worse model.
 
-```{r fig.width=9, fig.height=10, comment=""}
+```{r fig.width=9, fig.height=10}
 college2 <- college %>% filter(!influential)
 anova(lm(median ~ category, college2))
 ```
