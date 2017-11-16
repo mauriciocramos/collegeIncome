@@ -122,13 +122,16 @@ college %>%
 A helper function to check whether the value is a wrong percent, assuming a range from 0 to 1, inclusive.
 
 ``` r
-is.wrong <- function(x, min=0, max=1) is.na(x) | is.infinite(x) | (is.numeric(x) & (x < min | x > max))
+is.wrong <- function(x, min=0, max=1)
+    is.na(x) | is.infinite(x) | (is.numeric(x) & (x < min | x > max))
 ```
 
 Which columns have wrong values
 
 ``` r
-(wrongCols <- names(which(colSums(sapply(college[, grep("^perc_",names(college), value = TRUE)], is.wrong))>0)))
+# (wrongCols <- names(which(colSums(sapply(college[, grep("^perc_",names(college), value = TRUE)], is.wrong))>0)))
+columnScope <- grep("^perc_",names(college), value = TRUE)
+(wrongCols <- names(which(colSums(sapply(college[, columnScope], is.wrong))>0)))
 ```
 
     ## [1] "perc_employed_fulltime" "perc_employed_parttime"
@@ -138,7 +141,9 @@ Which columns have wrong values
 Which rows have wrong values
 
 ``` r
-wrongRows <- apply(sapply(wrongCols, function(col) is.wrong(college[, col])), 1, any)
+wrongRows <- apply(sapply(wrongCols,
+                          function(col) is.wrong(college[, col])),
+                   1, any)
 college %>%
     filter(wrongRows) %>%
     select(rank, major_category, major_code, one_of(wrongCols)) %>%
@@ -369,7 +374,7 @@ ggplot(college, aes(y=median, x=category, fill=category)) +
 
 ![](README_files/figure-markdown_github-ascii_identifiers/unnamed-chunk-20-1.png)
 
-### Rank by median incoming
+### Rank by median income
 
 It's already detected the presence of outliers.
 

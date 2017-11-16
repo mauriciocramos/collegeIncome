@@ -91,11 +91,6 @@ college %>%
 nrow(college)==length(unique(college$major))
 ```
 
-### Rank uniformity and discreteness
-```{r}
-all(sort(college$rank) == 1:nrow(college))
-```
-
 ### Incomplete cases
 ```{r}
 NACols <- names(which(colSums(is.na(college)) > 0))
@@ -109,17 +104,22 @@ college %>%
 
 A helper function to check whether the value is a wrong percent, assuming a range from 0 to 1, inclusive.
 ```{r}
-is.wrong <- function(x, min=0, max=1) is.na(x) | is.infinite(x) | (is.numeric(x) & (x < min | x > max))
+is.wrong <- function(x, min=0, max=1)
+    is.na(x) | is.infinite(x) | (is.numeric(x) & (x < min | x > max))
 ```
 
 Which columns have wrong values
 ```{r}
-(wrongCols <- names(which(colSums(sapply(college[, grep("^perc_",names(college), value = TRUE)], is.wrong))>0)))
+# (wrongCols <- names(which(colSums(sapply(college[, grep("^perc_",names(college), value = TRUE)], is.wrong))>0)))
+columnScope <- grep("^perc_",names(college), value = TRUE)
+(wrongCols <- names(which(colSums(sapply(college[, columnScope], is.wrong))>0)))
 ```
 
 Which rows have wrong values
 ```{r}
-wrongRows <- apply(sapply(wrongCols, function(col) is.wrong(college[, col])), 1, any)
+wrongRows <- apply(sapply(wrongCols,
+                          function(col) is.wrong(college[, col])),
+                   1, any)
 college %>%
     filter(wrongRows) %>%
     select(rank, major_category, major_code, one_of(wrongCols)) %>%
@@ -224,39 +224,7 @@ ggplot(college, aes(x=rank, y=rank(median))) +
     geom_smooth(method="lm")
 ```
 
-### Rank by major category
-
-The box plot shows the best ranked majors are from Engineering and the worst from Psychology & Social Work.
-
-The Interdisciplinary category has only one major, ranked bellow 100.  As we cannot estimate effects of a category with a single major, it will be removed.
-
-```{r}
-college <- college %>%
-    filter(category != "Int")
-```
-
-```{r fig.height=3, fig.width=9}
-ggplot(college, aes(y=rank, x=category, fill=category)) +
-    geom_boxplot(show.legend = FALSE)
-```
-
-The violin plot overlaid with a dot plot give a better view of the rank distribution by category. It suggests:
-
-* Engineering (Eng) ranks are more concentrated above 25, followed by Computers & Mathematics (C&M) more concentrated around 50..
-* Communications & Journalism (C&J) ranks are concentrated slightly above 100.
-* Categories "Art" and "Psychology & Social Work" have ranks more concentrated around 150.
-* The other categories not mentioned above are more uniformly distributed but worth metion that the categories Business (Bsn) and Physical Sciences (PhS) have each one a major that is around the overall top ones.
-
-```{r fig.height=3, fig.width=9}
-ggplot(college, aes(y=rank, x=category, fill=category)) +
-    geom_violin(show.legend = FALSE) +
-    geom_dotplot(binaxis='y', stackdir='center', fill="black",
-                 dotsize=.6, binwidth = 5)
-```
-
 ### Median earning distribution
-
-As stated in the codebook, the rank is calculated from median earnings of full-time, year-round workers, therefore, this variable should be investigated.
 
 Comparing the distribution kernel density and the normal curve one can see that the distribution of the median earning of each major is not normally distributed.
 
@@ -273,13 +241,18 @@ ggplot(college, aes(x=median), size=1) +
 
 ### Median earning by major category
 
-As stated in the codebook, the Rank is calculated from median earnings of full-time, year-round workers, therefore, the distribution of median income by category is an interesting exploration.
-
 There are potential influential points that deservers investigation.
 
 ```{r fig.height=4, fig.width=9}
 ggplot(college, aes(y=median, x=category, fill=category)) +
     geom_boxplot(show.legend = FALSE)
+```
+
+The Interdisciplinary category has only one major, ranked bellow 100.  As we cannot estimate effects of a category with a single major, it will be removed.
+
+```{r}
+college <- college %>%
+    filter(category != "Int")
 ```
 
 ```{r fig.height=4, fig.width=9}
@@ -290,56 +263,30 @@ ggplot(college, aes(y=median, x=category, fill=category)) +
     theme(legend.position = "none")
 ```
 
-### Rank by median incoming
+## Regression inference
 
-It's already detected the presence of outliers.
+The category t-values and their p-values that are all bigger than alpha mean not significant.
 
-As stated in the codebook, the Rank is predicted by median earnings of full-time, year-round workers, therefore, it's important to understand the relationship between rank and median earning.
-
-The overall regression line (black) suggests the higher the median earning the higher (low order) the rank.
-
-The slope sign inversions suggests further investigation.
+The model f-value and its p-value that is bigger than alpha mean not significant.
 
 ```{r}
-college %>% 
-    ggplot(aes(y=rank, x=median, color=category)) +
-    geom_point() +
-    geom_smooth(method = "lm", se = FALSE) +
-    geom_smooth(aes(color=NULL), color="black", method = "lm")
+fit1 <- lm(median ~ category, college)
+summary(fit1)
+anova(fit1)
 ```
 
-One can see the top 10 median earnings and respective ranks. The major "Miscellaneous Business & Medical Administration" have much higher median earning than the other majors but figures at 63rd in the rank while the major "Chemical Engineering" figures at 5th in the rank but with a much lower median earning.
+### Residual analysis
 
-```{r}
-college %>%
-    arrange(desc(median)) %>%
-    slice(1:10) %>%
-    select(category, major_code, major, total, sample_size, median, rank) %>%
-    customtable()
+In the first plot there's some kind of undesired systematic pattern and three outlying observations.
+
+In the second plot there is some violation in the normality assumption of the residuals.
+
+**It's not a good model.**
+
+```{r fig.width=9, fig.height=10, comment=""}
+par(mfrow=c(3,2))
+plot(fit1, which = 1:6, cex.id = 1, col="dark gray")
 ```
-
-Without the raw data, one can't ensure wheter outliers are results from spurious or real process, however, residual analysis is recommended in order to measure influence.
-
-### Rank by median earning conditioned by correlation sign
-
-To eventually avoid or at least isolate a Sympson paradox, the relationship between the rank and the median earning is conditioned by the correlation sign.  It's important to remind that a negative correlation, in this case, means a higher rank (low order) position.
-
-The right-side overall regression line (black) seems to better isolate the Sympson Paradox between 5 categories and still shows the previously mentioned influential values.  Within those categories, the more the median incomig increases, the lower is the rank (high order), i.e., those categories have unexpected positive correlations between the rank and the median however altogether result in the expected negative correlation.
-
-```{r}
-college %>%
-    group_by(category) %>%
-    mutate(correlation_signal = sign(cor(rank, median))) %>%
-    ungroup %>%
-    filter(!is.na(correlation_signal)) %>%
-    ggplot(aes(y=rank, x=median, color=category)) +
-    facet_grid(. ~ correlation_signal) +
-    geom_point() +
-    geom_smooth(method = "lm", se = FALSE) +
-    geom_smooth(aes(color=NULL), color="black", method = "lm")
-```
-
-Note: the category "Int" (Interdisciplinary) had only one observation thus can't be correlated, thus removed from the plot above with `filter(!is.na(correlation_signal))`.
 
 ### Outliers
 
@@ -347,104 +294,47 @@ Leverage measures (hat values) can be useful for diagnosing data entry errors an
 
 Influence measures explains how removing points impact a particular aspect of the model.
 
-#### Residual plots 
-
-In the first plot there's some kind of undesired systematic pattern and three outlying observations.
-
-In the second plot there is a violation in the normality assumption of the residuals.
-
-```{r fig.width=9, fig.height=10}
-par(mfrow=c(3,2))
-plot(lm(rank ~ median, college),
-     which = 1:6, cex.id = 1, col="dark gray")
-```
-
 #### Influence measures
 
-```{r}
-rankByMedianModel <- lm(rank ~ median, college)
-rankByMedianMeasures <- influence.measures(rankByMedianModel)
-summary(rankByMedianMeasures)
+```{r, comment=""}
+inf.measures <- influence.measures(fit1)
+summary(inf.measures)
 ```
 
 #### Influential observations
 ```{r}
-influential <- unname(apply(rankByMedianMeasures$is.inf, 1, any))
+influential <- unname(apply(inf.measures$is.inf, 1, any))
 college %>%
     select(category, major_code, major, total, sample_size, median, rank) %>%
     filter(influential) %>% customtable()
 ```
 
-#### What-if removing influential observations
+#### What-if removing influential observations?
 
-```{r}
-which(influential)
-```
+According to the model p-value, it's an even worse model.
 
-Removing the influential observations avoided the Sysmpson paradox in the correlation sign which suggests an improved model fit.
-
-```{r}
-college %>%
-    filter(!influential) %>%
-    group_by(category) %>%
-    mutate(correlation_signal = sign(cor(rank, median))) %>%
-    ungroup %>%
-    filter(!is.na(correlation_signal)) %>%
-    ggplot(aes(y=rank, x=median, color=category)) +
-    facet_grid(. ~ correlation_signal) +
-    geom_point() +
-    geom_smooth(method = "lm", se = FALSE) +
-    geom_smooth(aes(color=NULL), color="black", method = "lm")
-```
-
-## Regression inference
-
-### The initial hypothesis model
-```{r fig.height=7, fig.width=7, comment=""}
-fit1 <- lm(rank ~ category, college)
-summary(fit1)
-par(mfrow=c(3,2))
-plot(fit1, which = 1:6, cex.id = 1, col="dark gray")
+```{r fig.width=9, fig.height=10, comment=""}
+college2 <- college %>% filter(!influential)
+anova(lm(median ~ category, college2))
 ```
 
 ### Adding other terms
 
-As stated in the codebook, the rank is calculated from median earnings of full-time, year-round workers, therefore, we can experiment other terms not related to them like gender effects and effects related to type of job (jobs requiring a college degree and jobs that are low-wage service positions).
+One can experiment adding other terms not correlated to category like gender effects and effects related to type of job (jobs requiring a college degree and jobs that are low-wage service positions).
 
-```{r fig.height=7, fig.width=7, comment=""}
-fit2 <- lm(rank ~ major_category + perc_women + perc_college_jobs +
-              perc_low_wage_jobs, college)
-summary(fit2)
-par(mfrow=c(3,2))
-plot(fit2, which = 1:6, cex.id = 1, col="dark gray")
+```{r}
+fit2 <- lm(median ~ category + perc_women, college)
+fit3 <- lm(median ~ category + perc_college_jobs, college)
+fit4 <- lm(median ~ category + perc_low_wage_jobs, college)
 ```
-
-### Model ANOVA
-
 ```{r}
 anova(fit1, fit2)
 ```
-
-### Model 1 influence measurements and influential observations
 ```{r}
-measures <- influence.measures(fit1)
-summary(measures)
+anova(fit1, fit3)
 ```
-```{r, comment=""}
-influential <- unname(apply(measures$is.inf, 1, any))
-college %>%
-    select(category, major_code, major, total, sample_size, median, rank) %>%
-    filter(influential) %>% customtable()
+```{r}
+anova(fit1, fit4)
 ```
 
-### Model 2 influence measurements and influential observations
-```{r}
-measures <- influence.measures(fit2)
-summary(measures)
-```
-```{r, comment=""}
-influential <- unname(apply(measures$is.inf, 1, any))
-college %>%
-    select(category, major_code, major, total, sample_size, median, rank) %>%
-    filter(influential) %>% customtable()
-```
+No significant improvement in the model.
